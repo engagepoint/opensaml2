@@ -17,10 +17,6 @@
 
 package org.opensaml.saml2.binding.artifact;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-
 import org.opensaml.common.SAMLObject;
 import org.opensaml.common.binding.BasicEndpointSelector;
 import org.opensaml.common.binding.SAMLMessageContext;
@@ -33,10 +29,17 @@ import org.opensaml.xml.util.DatatypeHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+
 /**
  * SAML 2, type 0x0004, artifact builder.
  */
 public class SAML2ArtifactType0004Builder implements SAML2ArtifactBuilder<SAML2ArtifactType0004> {
+
+    public static final String DIGEST_ALGORITHM = "SHA-2";
+    public static final String RANDOM_ALGORITHM = "SHA2PRNG";
 
     /** Class logger. */
     private final Logger log = LoggerFactory.getLogger(SAML2ArtifactType0004Builder.class);
@@ -59,26 +62,27 @@ public class SAML2ArtifactType0004Builder implements SAML2ArtifactBuilder<SAML2A
             trimmedIndex[0] = endpointIndex[2];
             trimmedIndex[1] = endpointIndex[3];
 
-            MessageDigest sha1Digester = MessageDigest.getInstance("SHA-1");
-            byte[] source = sha1Digester.digest(requestContext.getLocalEntityId().getBytes());
+            MessageDigest messageDigest = MessageDigest.getInstance(DIGEST_ALGORITHM);
+            byte[] source = messageDigest.digest(requestContext.getLocalEntityId().getBytes());
 
-            SecureRandom handleGenerator = SecureRandom.getInstance("SHA1PRNG");
+            SecureRandom handleGenerator = SecureRandom.getInstance(RANDOM_ALGORITHM);
             byte[] assertionHandle;
             assertionHandle = new byte[20];
             handleGenerator.nextBytes(assertionHandle);
 
             return new SAML2ArtifactType0004(trimmedIndex, source, assertionHandle);
         } catch (NoSuchAlgorithmException e) {
-            log.error("JVM does not support required cryptography algorithms: SHA-1/SHA1PRNG.", e);
-            throw new InternalError("JVM does not support required cryptography algorithms: SHA-1/SHA1PRNG.");
+            String errorMessage = String.format("JVM does not support required cryptography algorithms: %s/%s.", DIGEST_ALGORITHM, RANDOM_ALGORITHM);
+            log.error(errorMessage, e);
+            throw new InternalError(errorMessage);
         }
     }
 
     /**
      * Gets the source location used to for the artifacts created by this encoder.
-     * 
+     *
      * @param requestContext current request context
-     * 
+     *
      * @return source location used to for the artifacts created by this encoder
      */
     protected Endpoint getAcsEndpoint(SAMLMessageContext<SAMLObject, SAMLObject, NameID> requestContext) {
